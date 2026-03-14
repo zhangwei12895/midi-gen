@@ -1,0 +1,49 @@
+# ── 模型权重（体积大，单独管理）──
+checkpoints/*.pt
+checkpoints/*.pth
+# 如果要用 Git LFS 追踪，取消注释下面两行：
+# !checkpoints/best_model.pt
+# !checkpoints/step100019mv2.pt
+
+# ── 生成产物 ──
+outputs/
+logs/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+pip-wheel-metadata/
+
+# ── 虚拟环境 ──
+venv/
+.venv/
+env/
+.env
+
+# ── 训练数据 ──
+data/raw/
+data/processed/
+*.mid.bak
+dataset_cache/
+
+# ── IDE / 系统 ──
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.log
+
+# ── 临时文件 ──
+*.tmp
+*.bak
+.cache/

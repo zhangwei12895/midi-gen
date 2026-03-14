@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MIDI / GEN</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+<style>
+:root{
+  --bg:#09090b;--bg1:#111116;--bg2:#18181f;
+  --line:#2c2c3c;--line2:#3a3a52;
+  --text:#e4e4f0;--dim:#56567a;--dim2:#30303f;
+  --acc:#c8f53a;--warm:#f5c53a;--red:#f5405a;
+  --s0:#7db8f5;--s1:#5df0c8;--s2:#c8f53a;--s3:#f5c53a;--s4:#f5405a;
+  --mono:'Space Mono',monospace;--sans:'Noto Sans SC',sans-serif;--r:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+::-webkit-scrollbar{width:0;height:0}
+*{scrollbar-width:none;-ms-overflow-style:none}
+html{height:100%}
+body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.02'/%3E%3C/svg%3E")}
+@media(min-width:920px){
+  body{overflow:hidden}.mob{display:none}
+  .desk{display:flex;position:relative;z-index:1;height:100vh}
+  .d-left{width:56%;flex-shrink:0;display:flex;flex-direction:column;padding:28px 28px 20px 32px;border-right:1px solid var(--line);height:100vh;overflow:hidden}
+  .d-right{flex:1;min-width:0;display:flex;flex-direction:column;padding:28px 26px 20px 26px;height:100vh;overflow:hidden}
+  .d-hist-wrap{flex:1;overflow-y:auto;min-height:0;margin-top:6px}
+}
+@media(max-width:919px){
+  body{overflow:auto;height:auto}.desk{display:none}
+  .mob{display:block;position:relative;z-index:1;padding:22px 16px 68px;max-width:540px;margin:0 auto}
+  .pgrid{grid-template-columns:1fr !important}
+  .pill{font-size:13px !important;padding:9px 15px !important}
+  .sg .sb{padding:14px 4px 12px !important}
+  .sg .sb .n{font-size:19px !important}
+  .sg .sb .z{font-size:13px !important}
+  .gbtn{font-size:15px !important;padding:17px !important}
+}
+.logo{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--acc);letter-spacing:-.02em}
+.logo span{color:var(--dim);font-weight:400}
+.tagline{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+.badge{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s}
+.badge.ok{color:var(--acc)}
+.lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.sg{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.sb{background:var(--bg1);border:1.5px solid var(--line);border-radius:var(--r);padding:12px 4px 10px;cursor:pointer;text-align:center;transition:border-color .15s,background .1s,transform .08s;-webkit-tap-highlight-color:transparent;user-select:none}
+.sb:active{transform:scale(.94)}
+.sb .n{font-family:var(--mono);font-size:17px;font-weight:700;display:block;line-height:1;margin-bottom:5px}
+.sb .z{font-size:12px;color:var(--dim);display:block;transition:color .12s}
+.sb .e{font-family:var(--mono);font-size:8px;color:var(--dim2);display:block;margin-top:2px}
+.sb[data-s="0"] .n{color:var(--s0)}.sb[data-s="1"] .n{color:var(--s1)}.sb[data-s="2"] .n{color:var(--s2)}.sb[data-s="3"] .n{color:var(--s3)}.sb[data-s="4"] .n{color:var(--s4)}
+.sb.on{background:var(--bg2)}
+.sb[data-s="0"].on{border-color:var(--s0)}.sb[data-s="1"].on{border-color:var(--s1)}.sb[data-s="2"].on{border-color:var(--s2)}.sb[data-s="3"].on{border-color:var(--s3)}.sb[data-s="4"].on{border-color:var(--s4)}
+.sb.on .z,.sb.on .e{color:var(--text)}
+.sprev{font-family:var(--mono);font-size:10px;color:var(--dim);padding:7px 11px;background:var(--bg1);border-radius:var(--r);border:1.5px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.si.intro{color:var(--s0)}.si.verse{color:#888}.si.chorus{color:var(--acc)}.si.bridge{color:var(--warm)}.si.outro{color:var(--dim)}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pg{display:flex;flex-direction:column;gap:7px}
+select.sty{width:100%;background:var(--bg1);border:1.5px solid var(--line);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:12px;padding:9px 12px;appearance:none;cursor:pointer;transition:border-color .15s}
+select.sty:focus{outline:none;border-color:var(--acc)}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-family:var(--mono);font-size:11px;padding:7px 13px;background:var(--bg1);border:1.5px solid var(--line);border-radius:100px;cursor:pointer;color:var(--dim);user-select:none;-webkit-tap-highlight-color:transparent;transition:border-color .12s,color .12s,background .12s;white-space:nowrap}
+.pill:active{transform:scale(.93)}
+.pill.on{background:var(--bg2);border-color:var(--acc);color:var(--acc)}
+.mrow{display:flex;gap:7px;align-items:center}
+.mrow select{flex:1}
+hr.dv{border:none;border-top:1px solid var(--line)}
+.gbtn{width:100%;background:var(--acc);color:#09090b;border:none;border-radius:var(--r);font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.04em;padding:15px;cursor:pointer;transition:transform .08s;position:relative;overflow:hidden}
+.gbtn:active{transform:scale(.98)}
+.gbtn:disabled{background:var(--bg2);color:var(--dim);cursor:not-allowed}
+.gbtn.busy::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.13),transparent);animation:shim 1.4s infinite}
+@keyframes shim{to{left:200%}}
+.pbar{height:2px;background:var(--line);border-radius:2px;overflow:hidden}
+.pfill{height:100%;background:var(--acc);border-radius:2px;width:0%;transition:width .5s ease}
+.gstat{font-family:var(--mono);font-size:12px;color:var(--dim);min-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player{background:var(--bg1);border:1.5px solid var(--line);border-radius:10px;overflow:hidden;opacity:0;transform:translateY(7px);transition:opacity .28s,transform .28s}
+.player.vis{opacity:1;transform:none}
+.ph{padding:13px 15px 9px;border-bottom:1px solid var(--line)}
+.ptt{font-family:var(--mono);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:3px}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;margin-right:4px;font-size:9px;letter-spacing:.04em}
+.tag.intro{background:rgba(125,184,245,.12);color:var(--s0)}.tag.verse{background:rgba(140,140,140,.09);color:#999}
+.tag.chorus{background:rgba(200,245,58,.1);color:var(--acc)}.tag.bridge{background:rgba(245,197,58,.1);color:var(--warm)}
+.tag.outro{background:rgba(80,80,110,.18);color:var(--dim)}
+.pw{padding:10px 15px 0;cursor:pointer}
+.ptrk{height:3px;background:var(--line);border-radius:3px}
+.pfr{height:100%;background:var(--acc);border-radius:3px;width:0%;transition:width .1s linear;position:relative}
+.pfr::after{content:'';position:absolute;right:-5px;top:-4px;width:11px;height:11px;background:var(--acc);border-radius:50%;opacity:0;transition:opacity .15s}
+.player:hover .pfr::after{opacity:1}
+.ptm{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);padding:4px 0 6px}
+.pc{display:flex;align-items:center;gap:6px;padding:8px 15px 12px}
+
+/* ★ Unified control buttons — card style, same size, same border */
+.cb{display:inline-flex;align-items:center;justify-content:center;
+  background:var(--bg2);border:1.5px solid var(--line);border-radius:6px;
+  cursor:pointer;padding:0;width:34px;height:34px;font-size:15px;line-height:1;
+  color:var(--dim);font-family:var(--mono);
+  transition:color .12s,border-color .12s,background .12s;
+  -webkit-tap-highlight-color:transparent;flex-shrink:0}
+.cb:hover{color:var(--text);border-color:var(--line2)}
+/* ★ Play/Pause always in acc color with accent border */
+.cb.play{color:var(--acc);border-color:var(--acc);background:rgba(200,245,58,.06);font-size:13px}
+.cb.play:hover{background:rgba(200,245,58,.12)}
+
+.viz{display:flex;align-items:flex-end;gap:2px;height:22px;flex:1;overflow:hidden}
+.vb{flex:1;background:var(--line);border-radius:1px;min-height:2px}
+.vb.on{background:var(--acc)}
+.vr{margin-left:auto;display:flex;align-items:center;gap:6px}
+.vi{font-size:12px;color:var(--dim)}
+.vsl{-webkit-appearance:none;appearance:none;width:68px;height:3px;background:var(--line);border-radius:3px;outline:none;cursor:pointer}
+.vsl::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--acc);border-radius:50%;cursor:pointer}
+.vsl::-moz-range-thumb{width:12px;height:12px;background:var(--acc);border:none;border-radius:50%}
+
+/* ★ Download button — same card style as .cb */
+.dlb{font-family:var(--mono);font-size:11px;color:var(--dim);text-decoration:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:54px;height:34px;border:1.5px solid var(--line);border-radius:6px;
+  background:var(--bg2);white-space:nowrap;transition:color .12s,border-color .12s}
+.dlb:hover{color:var(--acc);border-color:var(--acc)}
+
+/* History */
+.hist{display:flex;flex-direction:column;gap:5px}
+.hist-sec{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--dim);padding:10px 2px 5px;border-top:1px solid var(--line);margin-top:4px}
+.hist-sec:first-child{border-top:none;margin-top:0;padding-top:2px}
+.hist-sec.fav{color:var(--warm)}
+.hi{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg1);
+  border:1.5px solid var(--line);border-radius:var(--r);cursor:pointer;
+  transition:border-color .12s,background .12s;-webkit-tap-highlight-color:transparent}
+.hi:hover{background:var(--bg2);border-color:var(--line2)}
+.hi.cur{border-color:var(--acc)}
+.hi.fav-item{border-left:3px solid rgba(245,197,58,.5)}
+.hn{font-family:var(--mono);font-size:16px;font-weight:700;line-height:1;flex-shrink:0;width:22px;text-align:center}
+.hi-info{flex:1;min-width:0}
+.hi-name{font-family:var(--mono);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-sub{font-size:11px;color:var(--dim);margin-top:2px}
+
+/* ★ Favorite star — card style matching .cb */
+.hi-fav{display:inline-flex;align-items:center;justify-content:center;
+  background:none;border:1.5px solid transparent;border-radius:5px;
+  width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1;
+  color:var(--dim2);transition:color .12s,border-color .12s,background .12s;
+  -webkit-tap-highlight-color:transparent;flex-shrink:0}
+.hi-fav:hover,.hi-fav.on{color:var(--warm);border-color:rgba(245,197,58,.35);background:rgba(245,197,58,.06)}
+
+/* ★ History play icon — card style matching .cb */
+.hi-play{display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:5px;border:1.5px solid var(--line);
+  background:var(--bg2);font-size:11px;color:var(--dim);flex-shrink:0;
+  transition:color .12s,border-color .12s;font-family:var(--mono)}
+.hi:hover .hi-play{color:var(--text);border-color:var(--line2)}
+.hi.cur .hi-play{color:var(--acc);border-color:var(--acc);background:rgba(200,245,58,.06)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hi.loading .hi-play{animation:spin .7s linear infinite}
+
+.foot{display:flex;justify-content:space-between;align-items:center;padding-top:11px;border-top:1px solid var(--line);margin-top:auto}
+.foot-r{font-family:var(--mono);font-size:10px;color:var(--dim2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);display:inline-block;margin-right:5px;vertical-align:middle;transition:background .3s}
+.dot.ok{background:var(--acc);box-shadow:0 0 7px var(--acc)}
+.dot.busy{background:var(--warm);box-shadow:0 0 7px var(--warm)}
+.g4{margin-bottom:4px}.g8{margin-bottom:8px}.g10{margin-bottom:10px}.g14{margin-bottom:14px}.g18{margin-bottom:18px}.sp{flex:1}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--bg2);border:1.5px solid var(--line);border-radius:100px;padding:8px 20px;font-family:var(--mono);font-size:12px;color:var(--text);opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- DESKTOP -->
+<div class="desk">
+  <div class="d-left">
+    <div class="g18">
+      <div class="logo">MIDI<span>/</span>GEN</div>
+      <div class="tagline">AI Music · CPU Inference</div>
+      <div class="badge" id="bd2">&#x23F3; 连接中...</div>
+    </div>
+    <div class="lbl g8">MODEL  模型</div>
+    <div class="mrow g14"><select id="sel-md2" class="sty" onchange="S.model=this.value"><option value="">自动</option></select></div>
+    <div class="lbl g8">STYLE  曲风</div>
+    <div class="sg g8" id="sg2">
+      <button class="sb" data-s="0" onclick="setStyle(0)"><span class="n">0</span><span class="z">舒缓</span><span class="e">calm</span></button>
+      <button class="sb" data-s="1" onclick="setStyle(1)"><span class="n">1</span><span class="z">轻快</span><span class="e">light</span></button>
+      <button class="sb on" data-s="2" onclick="setStyle(2)"><span class="n">2</span><span class="z">均衡</span><span class="e">medium</span></button>
+      <button class="sb" data-s="3" onclick="setStyle(3)"><span class="n">3</span><span class="z">充沛</span><span class="e">energetic</span></button>
+      <button class="sb" data-s="4" onclick="setStyle(4)"><span class="n">4</span><span class="z">激情</span><span class="e">intense</span></button>
+    </div>
+    <div class="sprev g14" id="sp2"></div>
+    <div class="pgrid g14">
+      <div class="pg"><div class="lbl">KEY  调性</div>
+        <select id="sel-key2" class="sty">
+          <option value="C_maj">C 大调</option><option value="G_maj">G 大调</option>
+          <option value="D_maj">D 大调</option><option value="F_maj">F 大调</option>
+          <option value="Bb_maj">Bb 大调</option><option value="A_min">A 小调</option>
+          <option value="E_min">E 小调</option><option value="D_min">D 小调</option>
+        </select>
+      </div>
+      <div class="pg"><div class="lbl">TEMPO  速度</div>
+        <div class="pills" id="pt2">
+          <span class="pill" data-v="80" onclick="setTempo(80)">80</span>
+          <span class="pill on" data-v="120" onclick="setTempo(120)">120</span>
+          <span class="pill" data-v="150" onclick="setTempo(150)">150</span>
+          <span class="pill" data-v="175" onclick="setTempo(175)">175</span>
+        </div>
+      </div>
+      <div class="pg"><div class="lbl">TEMPERATURE  随机度</div>
+        <div class="pills" id="tt2">
+          <span class="pill" data-v="0.6" onclick="setTemp(0.6)">保守</span>
+          <span class="pill on" data-v="0.9" onclick="setTemp(0.9)">默认</span>
+          <span class="pill" data-v="1.1" onclick="setTemp(1.1)">创意</span>
+          <span class="pill" data-v="1.3" onclick="setTemp(1.3)">混乱</span>
+        </div>
+      </div>
+      <div class="pg"><div class="lbl">MAX BARS  长度上限</div>
+        <div class="pills" id="mb2">
+          <span class="pill on" data-v="8" onclick="setMaxBars(8)">8小节</span>
+          <span class="pill" data-v="16" onclick="setMaxBars(16)">16小节</span>
+          <span class="pill" data-v="24" onclick="setMaxBars(24)">24小节</span>
+          <span class="pill" data-v="32" onclick="setMaxBars(32)">32小节</span>
+          <span class="pill" data-v="48" onclick="setMaxBars(48)">48小节</span>
+          <span class="pill" data-v="0" onclick="setMaxBars(0)">不限</span>
+        </div>
+      </div>
+    </div>
+    <hr class="dv g14">
+    <button class="gbtn g8" id="gbtn2" onclick="doGenerate()">&#9711;  GENERATE SONG</button>
+    <div class="pbar g8"><div class="pfill" id="pf2"></div></div>
+    <div class="gstat g8" id="gs2">就绪</div>
+    <div class="sp"></div>
+    <div class="foot"><div><span class="dot" id="dot2"></span></div><div class="foot-r">MIDI / GEN</div></div>
+  </div>
+
+  <div class="d-right">
+    <div class="lbl g8">NOW PLAYING</div>
+    <div class="player g14" id="pl2">
+      <div class="ph"><div class="ptt" id="pt2t">—</div><div class="pm" id="pm2"></div></div>
+      <div class="pw" id="pw2" onclick="seekClick(event,'2')">
+        <div class="ptrk"><div class="pfr" id="pr2"></div></div>
+        <div class="ptm"><span id="tc2">0:00</span><span id="td2">0:00</span></div>
+      </div>
+      <div class="pc">
+        <button class="cb" onclick="restartSong()" title="从头播放">&#x21A9;</button>
+        <button class="cb play" id="pb2" onclick="togglePlay()">&#x25B6;</button>
+        <div class="viz" id="vz2"></div>
+        <div class="vr">
+          <span class="vi">&#9834;</span>
+          <input type="range" class="vsl" id="vol2" min="0" max="1" step="0.01" value="0.8" oninput="setVolume(this.value)">
+        </div>
+        <a class="dlb" id="dl2" href="#" download title="下载 MIDI">&#x2193; MIDI</a>
+      </div>
+    </div>
+    <div id="hint2" style="flex:1;display:flex;align-items:center;justify-content:center">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);text-align:center;line-height:2.6">
+        选择参数<br>点击 GENERATE<br>音乐将在此处播放
+      </div>
+    </div>
+    <div id="hs2" style="display:none;flex:1;min-height:0;flex-direction:column">
+      <div class="lbl g8">LIBRARY</div>
+      <div class="d-hist-wrap"><div class="hist" id="h2"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE -->
+<div class="mob">
+  <div class="g18">
+    <div class="logo">MIDI<span>/</span>GEN</div>
+    <div class="tagline">AI Music Generator</div>
+    <div class="badge" id="bd1">&#x23F3; 连接中...</div>
+  </div>
+  <div class="lbl g8">MODEL</div>
+  <div class="mrow g14"><select id="sel-md1" class="sty" onchange="S.model=this.value"><option value="">自动</option></select></div>
+  <div class="lbl g8">STYLE  曲风</div>
+  <div class="sg g8" id="sg1">
+    <button class="sb" data-s="0" onclick="setStyle(0)"><span class="n">0</span><span class="z">舒缓</span></button>
+    <button class="sb" data-s="1" onclick="setStyle(1)"><span class="n">1</span><span class="z">轻快</span></button>
+    <button class="sb on" data-s="2" onclick="setStyle(2)"><span class="n">2</span><span class="z">均衡</span></button>
+    <button class="sb" data-s="3" onclick="setStyle(3)"><span class="n">3</span><span class="z">充沛</span></button>
+    <button class="sb" data-s="4" onclick="setStyle(4)"><span class="n">4</span><span class="z">激情</span></button>
+  </div>
+  <div class="sprev g14" id="sp1"></div>
+  <div class="pgrid g14">
+    <div class="pg"><div class="lbl">KEY  调性</div>
+      <select id="sel-key1" class="sty">
+        <option value="C_maj">C 大调</option><option value="G_maj">G 大调</option>
+        <option value="D_maj">D 大调</option><option value="F_maj">F 大调</option>
+        <option value="A_min">A 小调</option><option value="E_min">E 小调</option>
+      </select>
+    </div>
+    <div class="pg"><div class="lbl">TEMPO  速度</div>
+      <div class="pills" id="pt1">
+        <span class="pill" data-v="80" onclick="setTempo(80)">80 BPM</span>
+        <span class="pill on" data-v="120" onclick="setTempo(120)">120 BPM</span>
+        <span class="pill" data-v="150" onclick="setTempo(150)">150 BPM</span>
+        <span class="pill" data-v="175" onclick="setTempo(175)">175 BPM</span>
+      </div>
+    </div>
+    <div class="pg"><div class="lbl">TEMPERATURE  随机度</div>
+      <div class="pills" id="tt1">
+        <span class="pill" data-v="0.6" onclick="setTemp(0.6)">保守</span>
+        <span class="pill on" data-v="0.9" onclick="setTemp(0.9)">默认</span>
+        <span class="pill" data-v="1.1" onclick="setTemp(1.1)">创意</span>
+        <span class="pill" data-v="1.3" onclick="setTemp(1.3)">混乱</span>
+      </div>
+    </div>
+    <div class="pg"><div class="lbl">MAX BARS  长度上限</div>
+      <div class="pills" id="mb1">
+        <span class="pill on" data-v="8" onclick="setMaxBars(8)">8小节</span>
+        <span class="pill" data-v="16" onclick="setMaxBars(16)">16小节</span>
+        <span class="pill" data-v="24" onclick="setMaxBars(24)">24小节</span>
+        <span class="pill" data-v="32" onclick="setMaxBars(32)">32小节</span>
+        <span class="pill" data-v="0" onclick="setMaxBars(0)">不限</span>
+      </div>
+    </div>
+  </div>
+  <hr class="dv g14">
+  <button class="gbtn g8" id="gbtn1" onclick="doGenerate()">&#9711;  GENERATE SONG</button>
+  <div class="pbar g8"><div class="pfill" id="pf1"></div></div>
+  <div class="gstat g14" id="gs1">就绪</div>
+  <div class="player g14" id="pl1">
+    <div class="ph"><div class="ptt" id="pt1t">—</div><div class="pm" id="pm1"></div></div>
+    <div class="pw" id="pw1" onclick="seekClick(event,'1')">
+      <div class="ptrk"><div class="pfr" id="pr1"></div></div>
+      <div class="ptm"><span id="tc1">0:00</span><span id="td1">0:00</span></div>
+    </div>
+    <div class="pc">
+      <button class="cb" onclick="restartSong()" title="从头播放">&#x21A9;</button>
+      <button class="cb play" id="pb1" onclick="togglePlay()">&#x25B6;</button>
+      <div class="viz" id="vz1"></div>
+      <div class="vr">
+        <span class="vi">&#9834;</span>
+        <input type="range" class="vsl" id="vol1" min="0" max="1" step="0.01" value="0.8" oninput="setVolume(this.value)">
+      </div>
+      <a class="dlb" id="dl1" href="#" download title="下载">&#x2193;</a>
+    </div>
+  </div>
+  <div id="hs1" style="display:none;margin-top:4px">
+    <div class="lbl g8">LIBRARY</div>
+    <div class="hist" id="h1"></div>
+  </div>
+  <div class="foot" style="margin-top:32px"><div><span class="dot" id="dot1"></span></div><div class="foot-r">MIDI / GEN</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const S={style:2,tempo:120,temp:0.9,maxBars:8,model:'',generating:false,curUrl:null,curFile:null};
+const STRUCTS={
+  0:[{n:'INTRO',b:4},{n:'OUTRO',b:4}],
+  1:[{n:'INTRO',b:4},{n:'VERSE',b:8},{n:'CHORUS',b:4},{n:'OUTRO',b:4}],
+  2:[{n:'INTRO',b:4},{n:'VERSE',b:8},{n:'CHORUS',b:8},{n:'VERSE',b:8},{n:'CHORUS',b:8},{n:'OUTRO',b:4}],
+  3:[{n:'INTRO',b:4},{n:'VERSE',b:8},{n:'CHORUS',b:8},{n:'VERSE',b:8},{n:'CHORUS',b:8},{n:'BRIDGE',b:4},{n:'CHORUS',b:8},{n:'OUTRO',b:4}],
+  4:[{n:'INTRO',b:4},{n:'VERSE',b:8},{n:'CHORUS',b:8},{n:'VERSE',b:8},{n:'CHORUS',b:8},{n:'BRIDGE',b:4},{n:'CHORUS',b:8},{n:'CHORUS',b:8},{n:'OUTRO',b:4}],
+};
+const SN=['舒缓','轻快','均衡','充沛','激情'];
+// ★ Unified icon set — same visual weight, consistent style
+const IC={play:'&#x25B6;',pause:'&#x275A;&#x275A;',restart:'&#x21A9;'};
+const g=id=>document.getElementById(id);
+const ga=(ids,fn)=>ids.forEach(id=>{const e=g(id);if(e)fn(e);});
+
+/* ── FAVORITES ── localStorage, persistent ── */
+const FAV_KEY='midi_favs';
+let _favs=new Set(JSON.parse(localStorage.getItem(FAV_KEY)||'[]'));
+function _saveFavs(){try{localStorage.setItem(FAV_KEY,JSON.stringify([..._favs]));}catch(e){}}
+function _toggleFav(fn,ev){
+  ev.stopPropagation();
+  if(_favs.has(fn)){_favs.delete(fn);toast('已取消收藏');}
+  else{_favs.add(fn);toast('★ 已收藏');}
+  _saveFavs();_rh();
+}
+
+/* ── AUDIO ENGINE — GainNode realtime vol ── */
+const AE=(()=>{
+  let _ac=null,_gain=null,_insts={},_midi=null;
+  let _playing=false,_start=0,_offset=0,_raf=null,_onEnd=null;
+  const PM={Melody:'electric_piano_1',Bass:'acoustic_bass',Harmony:'string_ensemble_1'};
+  function _ctx(){if(!_ac){_ac=new(window.AudioContext||window.webkitAudioContext)();_gain=_ac.createGain();_gain.gain.value=0.8;_gain.connect(_ac.destination);}return _ac;}
+  async function resume(){const ac=_ctx();if(ac.state==='suspended')await ac.resume();}
+  async function load(url){
+    _si();const ac=_ctx();if(ac.state==='suspended')await ac.resume();
+    const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),30000);
+    let resp;try{resp=await fetch(url,{signal:ctrl.signal});}finally{clearTimeout(t);}
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    _midi=new Midi(await resp.arrayBuffer());
+    const progs=[...new Set(_midi.tracks.map(t=>PM[t.name]||'acoustic_grand_piano'))];
+    await Promise.all(progs.map(nm=>!_insts[nm]
+      ?Soundfont.instrument(ac,nm,{soundfont:'MusyngKite',destination:_gain}).then(i=>{_insts[nm]=i;})
+      :Promise.resolve()));
+    return _midi.duration;
+  }
+  function _sc(off){const ac=_ctx(),now=ac.currentTime;_midi.tracks.forEach(t=>{const inst=_insts[PM[t.name]||'acoustic_grand_piano'];if(!inst)return;t.notes.forEach(n=>{const dt=n.time-off;if(dt<-0.05)return;inst.play(n.name,now+Math.max(0,dt),{duration:n.duration,gain:n.velocity});});});}
+  function play(off){if(!_midi)return;_offset=off!=null?off:_offset;_start=_ctx().currentTime-_offset;_playing=true;_sc(_offset);_loop();}
+  function pause(){if(!_playing)return;_offset=_ctx().currentTime-_start;_playing=false;_ss();cancelAnimationFrame(_raf);}
+  function _si(){_playing=false;_offset=0;_ss();cancelAnimationFrame(_raf);}
+  function stop(){_si();}
+  function _ss(){Object.values(_insts).forEach(i=>{try{i.stop();}catch(e){}});}
+  function seek(t){const w=_playing;_si();_offset=t;if(w)play(t);}
+  function cur(){return _playing?_ctx().currentTime-_start:_offset;}
+  function dur(){return _midi?_midi.duration:0;}
+  function _loop(){cancelAnimationFrame(_raf);(function t(){if(!_playing)return;const c=cur();_upP(c,dur());if(c>=dur()-0.1){_playing=false;_upP(dur(),dur());if(_onEnd)_onEnd();return;}_raf=requestAnimationFrame(t);})();}
+  function setVol(v){_ctx();if(_gain)_gain.gain.setTargetAtTime(parseFloat(v),_ctx().currentTime,0.015);}
+  return{load,resume,play:(o)=>play(o),pause,stop,seek,isPlaying:()=>_playing,cur,dur,setVol,onEnd:cb=>{_onEnd=cb;}};
+})();
+
+function _upP(c,d){const pct=d>0?Math.min(1,c/d)*100:0;ga(['pr1','pr2'],e=>e.style.width=pct+'%');ga(['tc1','tc2'],e=>e.textContent=ft(c));_vizU(c);}
+function ft(s){s=Math.max(0,+s||0);return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');}
+
+const VN=16;
+function _bldViz(id){const e=g(id);if(!e)return;e.innerHTML='';for(let i=0;i<VN;i++){const b=document.createElement('div');b.className='vb';b.id=id+'_'+i;e.appendChild(b);}}
+function _vizU(c){const p=AE.isPlaying();['vz1','vz2'].forEach(vid=>{for(let i=0;i<VN;i++){const b=g(vid+'_'+i);if(!b)continue;let h;if(p){const ph=(c*4+i*.42)%(Math.PI*2);h=Math.max(8,((Math.sin(ph)+1)/2*.6+Math.random()*.22)*100);b.classList.add('on');}else{h=16+Math.sin(i*.8)*8;b.classList.remove('on');}b.style.height=h+'%';}});}
+
+function setStyle(s){
+  S.style=s;
+  ['sg1','sg2'].forEach(gid=>document.querySelectorAll('#'+gid+' .sb').forEach(b=>b.classList.toggle('on',+b.dataset.s===s)));
+  const st=STRUCTS[s]||[],tot=st.reduce((a,x)=>a+x.b,0);
+  const html=st.map(x=>'<span class="si '+x.n.toLowerCase()+'">'+x.n+'('+x.b+')</span>').join('<span style="color:var(--line)"> · </span>');
+  ga(['sp1','sp2'],e=>e.innerHTML=html+'<span style="margin-left:6px;color:var(--dim2)">≈'+tot+'小节</span>');
+}
+function setTempo(v){S.tempo=v;['pt1','pt2'].forEach(id=>document.querySelectorAll('#'+id+' .pill').forEach(p=>p.classList.toggle('on',+p.dataset.v===v)));}
+function setTemp(v){S.temp=v;['tt1','tt2'].forEach(id=>document.querySelectorAll('#'+id+' .pill').forEach(p=>p.classList.toggle('on',+p.dataset.v===v)));}
+function setMaxBars(v){S.maxBars=v;['mb1','mb2'].forEach(id=>document.querySelectorAll('#'+id+' .pill').forEach(p=>p.classList.toggle('on',+p.dataset.v===v)));}
+function setVolume(v){AE.setVol(v);ga(['vol1','vol2'],e=>{if(Math.abs(+e.value-v)>0.005)e.value=v;});}
+
+// ★ Set play/pause button innerHTML (use IC object for consistent icons)
+function _sb(icon){ga(['pb1','pb2'],e=>e.innerHTML=icon);}
+
+function togglePlay(){if(!S.curUrl)return;if(AE.isPlaying()){AE.pause();_sb(IC.play);}else{_sb(IC.pause);AE.play();}}
+function restartSong(){if(!S.curUrl)return;AE.seek(0);_sb(IC.pause);AE.play(0);}
+function seekClick(e,sfx){
+  if(!S.curUrl)return;
+  const w=g('pw'+sfx);if(!w)return;
+  const t=Math.max(0,(e.clientX-w.getBoundingClientRect().left)/w.offsetWidth*AE.dur());
+  AE.seek(t);if(!AE.isPlaying()){AE.play(t);_sb(IC.pause);}
+}
+
+async function doGenerate(){
+  if(S.generating)return;
+  await AE.resume();
+  S.generating=true;_gUI(true);
+  const key=g('sel-key2')?.value||g('sel-key1')?.value||'C_maj';
+  let fp=5,fi=setInterval(()=>{fp=Math.min(86,fp+Math.random()*2);_sP(fp);},1000);
+  _ss2('生成中 · '+SN[S.style]+(S.maxBars?' · 最多'+S.maxBars+'小节':'')+' · CPU 推理...');
+  const hbi=setInterval(()=>fetch('/api/heartbeat',{method:'POST'}).catch(()=>{}),25000);
+  try{
+    const body={style:S.style,key,tempo:S.tempo,temperature:S.temp,top_k:40,top_p:0.9};
+    if(S.model)body.model=S.model;
+    if(S.maxBars>0)body.max_bars=S.maxBars;
+    const resp=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    clearInterval(fi);
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error||'服务器错误');}
+    const data=await resp.json();
+    _sP(95);_ss2('渲染音频...');
+    await _lp(data);
+    _sP(100);
+    _ss2('✓ '+data.bars+'小节 · '+data.notes+'音符 · '+ft(data.duration)+' · 耗时'+data.elapsed+'s');
+    _ah(data);toast('完成  '+ft(data.duration));
+  }catch(e){clearInterval(fi);_sP(0);_ss2('✗ '+e.message);toast(e.message,true);}
+  finally{clearInterval(hbi);}
+  _gUI(false);S.generating=false;
+}
+function _gUI(b){ga(['gbtn1','gbtn2'],e=>{e.disabled=b;e.classList.toggle('busy',b);e.textContent=b?'⏳  GENERATING...':'◉  GENERATE SONG';});}
+function _sP(v){ga(['pf1','pf2'],e=>e.style.width=v+'%');}
+function _ss2(t){ga(['gs1','gs2'],e=>e.textContent=t);}
+
+async function _lp(data){
+  S.curUrl=data.url;S.curFile=data.filename;
+  const name=(data.filename||'').replace('.mid',''),dur=data.duration||0;
+  ga(['pt1t','pt2t'],e=>e.textContent=name);
+  ga(['td1','td2'],e=>e.textContent=ft(dur));
+  ga(['dl1','dl2'],e=>{e.href=data.url;e.download=data.filename;});
+  const sh=(data.sections||[]).map(s=>'<span class="tag '+s.toLowerCase()+'">'+s+'</span>').join('');
+  ga(['pm1','pm2'],e=>e.innerHTML=sh);
+  ga(['pl1','pl2'],e=>e.classList.add('vis'));
+  const h=g('hint2'),hs=g('hs2');
+  if(h)h.style.display='none';if(hs)hs.style.display='flex';
+  AE.setVol(parseFloat(g('vol2')?.value||g('vol1')?.value||'0.8'));
+  await AE.load(data.url);
+  AE.onEnd(()=>{_sb(IC.play);_rh();});
+  _sb(IC.pause);AE.play(0);_rh();
+}
+
+const _hist=[];
+function _ah(data){
+  const idx=_hist.findIndex(d=>d.filename===data.filename);
+  if(idx>=0)_hist.splice(idx,1);
+  _hist.unshift(data);
+  _rh();
+  ga(['hs1'],e=>e.style.display='');
+  const hs=g('hs2'),h=g('hint2');if(hs)hs.style.display='flex';if(h)h.style.display='none';
+}
+
+function _rh(){
+  const favList=_hist.filter(d=>_favs.has(d.filename));
+  const regList=_hist.filter(d=>!_favs.has(d.filename)).slice(0,30);
+  ['h1','h2'].forEach(hid=>{
+    const e=g(hid);if(!e)return;
+    let html='';
+    if(favList.length){
+      html+='<div class="hist-sec fav">&#9733; 已收藏  '+favList.length+' 首</div>';
+      html+=favList.map(d=>_hiH(d,_hist.indexOf(d),hid)).join('');
+    }
+    if(regList.length){
+      if(favList.length)html+='<div class="hist-sec">历史记录</div>';
+      html+=regList.map(d=>_hiH(d,_hist.indexOf(d),hid)).join('');
+    }
+    e.innerHTML=html;
+  });
+}
+
+function _hiH(d,i,hid){
+  const fav=_favs.has(d.filename);
+  const cur=S.curFile===d.filename;
+  const playIco=cur&&AE.isPlaying()?IC.pause:IC.play;
+  return '<div class="hi'+(cur?' cur':'')+(fav?' fav-item':'')+'" id="hi_'+hid+'_'+i+'" onclick="_ph('+i+',\''+hid+'\')">'
+    +'<div class="hn" style="color:var(--s'+d.style+')">'+d.style+'</div>'
+    +'<div class="hi-info"><div class="hi-name">'+((d.filename||'').replace('.mid',''))+'</div>'
+    +'<div class="hi-sub">'+(SN[d.style]||'')+' · '+(d.bars||'?')+'小节 · '+ft(d.duration||0)+'</div></div>'
+    +'<button class="hi-fav'+(fav?' on':'')+'" onclick="_toggleFav(\''+d.filename+'\',event)">'+(fav?'&#9733;':'&#9734;')+'</button>'
+    +'<div class="hi-play">'+playIco+'</div>'
+    +'</div>';
+}
+
+async function _ph(i,hid){
+  const data=_hist[i];if(!data)return;
+  const el=g('hi_'+hid+'_'+i);if(el)el.classList.add('loading');
+  AE.stop();
+  try{
+    await AE.resume();
+    await _lp(data);
+  }catch(e){
+    const msg=e.name==='AbortError'?'加载超时，请重试':'加载失败: '+e.message;
+    toast(msg,true);_ss2('✗ '+msg);
+  }finally{if(el)el.classList.remove('loading');_rh();}
+}
+
+async function pollStatus(){
+  try{
+    const r=await fetch('/api/status'),d=await r.json();
+    const ok=d.ready,busy=d.busy;
+    ga(['dot1','dot2'],e=>e.className='dot'+(busy?' busy':ok?' ok':''));
+    if(!S.generating)ga(['gs1','gs2'],e=>{if(!e.textContent.startsWith('✓'))e.textContent=ok?'就绪':'加载中...';});
+    ga(['bd1','bd2'],e=>{e.textContent=ok?'✓ '+((d.model_name||'').trim())+' '+((d.param_str||'').trim())+' step='+(d.step||0):'⏳ 加载中...';e.className='badge'+(ok?' ok':'');});
+    if(d.models&&d.models.length){
+      ['sel-md1','sel-md2'].forEach(id=>{
+        const sel=g(id);if(!sel||sel.options.length>1)return;
+        d.models.forEach(m=>sel.appendChild(new Option(m,m)));
+        const pref=d.models.find(m=>m.includes('step100019')&&m.includes('v2'))
+          ||d.models.find(m=>m.includes('v2'))||d.cur_model;
+        if(pref){sel.value=pref;S.model=pref;}
+      });
+    }
+  }catch(e){
+    ga(['dot1','dot2'],e=>e.className='dot');
+    if(!S.generating)ga(['gs1','gs2'],e=>e.textContent='服务器离线');
+  }
+}
+
+async function loadPresets(){
+  try{
+    const files=await(await fetch('/api/presets')).json();
+    if(!files.length)return;
+    files.forEach(f=>{
+      if(!_hist.find(d=>d.filename===f.filename))
+        _hist.push({filename:f.filename,url:f.url,style:f.style||2,duration:f.duration||0,bars:0,notes:0,sections:[],elapsed:0,tempo:120,key:'C_maj'});
+    });
+    _rh();
+    ga(['hs1'],e=>e.style.display='');
+    const hs=g('hs2'),h=g('hint2');if(hs)hs.style.display='flex';if(h)h.style.display='none';
+  }catch(e){}
+}
+
+let _tt;
+function toast(msg,err=false){const e=g('toast');e.textContent=msg;e.style.color=err?'var(--red)':'var(--text)';e.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove('show'),2800);}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  _bldViz('vz1');_bldViz('vz2');
+  setStyle(2);setMaxBars(8);
+  pollStatus();loadPresets();
+  setInterval(pollStatus,6000);
+  setInterval(()=>_vizU(AE.cur()),80);
+  setInterval(()=>{if(document.visibilityState==='visible')fetch('/api/heartbeat',{method:'POST'}).catch(()=>{});},28000);
+});
+</script>
+</body>
+</html>
