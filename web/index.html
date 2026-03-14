@@ -175,7 +175,6 @@ hr.dv{border:none;border-top:1px solid var(--line)}
     <div class="g18">
       <div class="logo">MIDI<span>/</span>GEN</div>
       <div class="tagline">AI Music · CPU Inference</div>
-      <div class="badge" id="bd2">&#x23F3; 连接中...</div>
     </div>
     <div class="lbl g8">MODEL  模型</div>
     <div class="mrow g14"><select id="sel-md2" class="sty" onchange="S.model=this.value"><option value="">自动</option></select></div>
@@ -268,7 +267,6 @@ hr.dv{border:none;border-top:1px solid var(--line)}
   <div class="g18">
     <div class="logo">MIDI<span>/</span>GEN</div>
     <div class="tagline">AI Music Generator</div>
-    <div class="badge" id="bd1">&#x23F3; 连接中...</div>
   </div>
   <div class="lbl g8">MODEL</div>
   <div class="mrow g14"><select id="sel-md1" class="sty" onchange="S.model=this.value"><option value="">自动</option></select></div>
@@ -360,15 +358,32 @@ const IC={play:'&#x25B6;',pause:'&#x275A;&#x275A;',restart:'&#x21A9;'};
 const g=id=>document.getElementById(id);
 const ga=(ids,fn)=>ids.forEach(id=>{const e=g(id);if(e)fn(e);});
 
-/* ── FAVORITES ── localStorage, persistent ── */
-const FAV_KEY='midi_favs';
-let _favs=new Set(JSON.parse(localStorage.getItem(FAV_KEY)||'[]'));
-function _saveFavs(){try{localStorage.setItem(FAV_KEY,JSON.stringify([..._favs]));}catch(e){}}
-function _toggleFav(fn,ev){
+/* ── FAVORITES ── 全局服务端存储，所有用户共享，最多 6 首 ── */
+let _favs=new Set();
+
+async function _loadFavs(){
+  try{
+    const r=await fetch('/api/favorites');
+    const list=await r.json();
+    _favs=new Set(Array.isArray(list)?list:[]);
+    _rh();
+  }catch(e){}
+}
+
+async function _toggleFav(fn,ev){
   ev.stopPropagation();
-  if(_favs.has(fn)){_favs.delete(fn);toast('已取消收藏');}
-  else{_favs.add(fn);toast('★ 已收藏');}
-  _saveFavs();_rh();
+  try{
+    const r=await fetch('/api/favorites',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({filename:fn})
+    });
+    const d=await r.json();
+    if(!r.ok){toast(d.error||'操作失败',true);return;}
+    _favs=new Set(d.favorites||[]);
+    toast(d.action==='added'?'★ 已收藏':'已取消收藏');
+    _rh();
+  }catch(e){toast('网络错误',true);}
 }
 
 /* ── AUDIO ENGINE — GainNode realtime vol ── */
@@ -498,7 +513,7 @@ function _rh(){
     const e=g(hid);if(!e)return;
     let html='';
     if(favList.length){
-      html+='<div class="hist-sec fav">&#9733; 已收藏  '+favList.length+' 首</div>';
+      html+='<div class="hist-sec fav">&#9733; 已收藏  '+favList.length+'/6 首</div>';
       html+=favList.map(d=>_hiH(d,_hist.indexOf(d),hid)).join('');
     }
     if(regList.length){
@@ -541,7 +556,6 @@ async function pollStatus(){
     const ok=d.ready,busy=d.busy;
     ga(['dot1','dot2'],e=>e.className='dot'+(busy?' busy':ok?' ok':''));
     if(!S.generating)ga(['gs1','gs2'],e=>{if(!e.textContent.startsWith('✓'))e.textContent=ok?'就绪':'加载中...';});
-    ga(['bd1','bd2'],e=>{e.textContent=ok?'✓ '+((d.model_name||'').trim())+' '+((d.param_str||'').trim())+' step='+(d.step||0):'⏳ 加载中...';e.className='badge'+(ok?' ok':'');});
     if(d.models&&d.models.length){
       ['sel-md1','sel-md2'].forEach(id=>{
         const sel=g(id);if(!sel||sel.options.length>1)return;
@@ -577,7 +591,7 @@ function toast(msg,err=false){const e=g('toast');e.textContent=msg;e.style.color
 document.addEventListener('DOMContentLoaded',()=>{
   _bldViz('vz1');_bldViz('vz2');
   setStyle(2);setMaxBars(8);
-  pollStatus();loadPresets();
+  pollStatus();loadPresets();_loadFavs();
   setInterval(pollStatus,6000);
   setInterval(()=>_vizU(AE.cur()),80);
   setInterval(()=>{if(document.visibilityState==='visible')fetch('/api/heartbeat',{method:'POST'}).catch(()=>{});},28000);
