@@ -47,3 +47,7 @@ Thumbs.db
 *.tmp
 *.bak
 .cache/
+
+checkpoints/*.pt
+checkpoints/*.pth
+
