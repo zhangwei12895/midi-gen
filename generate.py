@@ -83,16 +83,18 @@ def load_model(
 # ══════════════════════════════════════════════
 @torch.no_grad()
 def generate_song(
-    model      : MusicTransformer,
-    tok        : MusicTokenizer,
-    device     : torch.device,
-    style      : int   = GEN_CONFIG["default_intensity"],
-    key_str    : str   = GEN_CONFIG["default_key"],
-    tempo      : float = GEN_CONFIG["default_tempo"],
-    temperature: float = GEN_CONFIG["temperature"],
-    top_k      : int   = GEN_CONFIG["top_k"],
-    top_p      : float = GEN_CONFIG["top_p"],
-    rep_penalty: float = GEN_CONFIG["repetition_penalty"],
+    model       : MusicTransformer,
+    tok         : MusicTokenizer,
+    device      : torch.device,
+    style       : int   = GEN_CONFIG["default_intensity"],
+    key_str     : str   = GEN_CONFIG["default_key"],
+    tempo       : float = GEN_CONFIG["default_tempo"],
+    temperature : float = GEN_CONFIG["temperature"],
+    top_k       : int   = GEN_CONFIG["top_k"],
+    top_p       : float = GEN_CONFIG["top_p"],
+    rep_penalty : float = GEN_CONFIG["repetition_penalty"],
+    max_tokens  : int   = None,   # 可覆盖 GEN_CONFIG 的上限
+    cancel_flag         = None,   # threading.Event，置位时提前终止
 ) -> Tuple[List[int], List[str]]:
     """
     自回归生成完整一首歌。
@@ -108,7 +110,7 @@ def generate_song(
     sections_hit : 生成过程中遇到的段落列表（用于显示）
     """
     MIN_BARS  = GEN_CONFIG["min_bars_before_eos"]
-    MAX_TOKENS= GEN_CONFIG["max_gen_tokens"]
+    MAX_TOKENS= max_tokens if max_tokens is not None else GEN_CONFIG["max_gen_tokens"]
     MAX_CTX   = 1536
 
     cons = MusicTheoryConstraints(tok)
@@ -202,6 +204,10 @@ def generate_song(
         pbar.update(1)
 
         if nxt == tok.eos_id:
+            break
+        # 心跳取消检测
+        if cancel_flag is not None and cancel_flag.is_set():
+            all_tokens.append(tok.eos_id)
             break
 
     pbar.n = step + 1; pbar.refresh(); pbar.close()
